@@ -59,7 +59,6 @@ class Instructor:
         self.opt.config = BertConfig.from_pretrained(opt.pretrained_bert_name)
         bert = BertModel.from_pretrained(opt.pretrained_bert_name)
         self.model = opt.model_class(bert, self.opt).to(opt.device)
-        # self.model = GCNBert(bert, opt).to(opt.device)
         trainset = ABSAGCNData(opt.dataset_file['train'], tokenizer, opt, istrain=True, do_augment=True)
 
         testset = ABSAGCNData(opt.dataset_file['test'], tokenizer, opt, istrain=False)
@@ -214,11 +213,6 @@ class Instructor:
                     n_total += len(logits)
                     train_acc = n_correct / n_total
                     test_acc, f1 = self._evaluate()
-
-                    if test_acc > self.opt.train_acc :
-                        self.opt.log_step = 1
-                    else:
-                        self.opt.log_step = 5
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
                         if test_acc > max_test_acc_overall:
@@ -262,23 +256,6 @@ class Instructor:
         np.save('C:/Users/1234/Desktop/tsne/pcl_test_label_2_pos.npy', targets_all_np)
         test_acc = n_test_correct / n_test_total
         f1 = metrics.f1_score(targets_all.cpu(), torch.argmax(outputs_all, -1).cpu(), labels=[0, 1, 2], average='macro')
-        # input_ids_all = input_ids_all.cpu().numpy()
-        # target_weight_all = target_weight_all.cpu().numpy()
-        #
-        # for i in range(len(input_ids_all)):
-        #     input_ids = input_ids_all[i]
-        #     target_w = target_weight_all[i]
-        #     text = self.opt.tokenizer.convert_ids_to_tokens(input_ids)
-        #     sep_index = text.index('[MASK]')
-        #     text = text[:sep_index+1]
-        #     target_w = target_w[:, :sep_index+1]
-        #     frame = pd.DataFrame(target_w, columns=text, index=['all', 'mask', 'aspect'])
-        #
-        #     frame.to_csv(r'C:\\Users\\Administrator\\Desktop\\weight/score_rest_softmax.csv', mode='a', header=True)
-
-
-
-
 
         labels = targets_all.data.cpu()
         predic = torch.argmax(outputs_all, -1).cpu()
@@ -290,13 +267,10 @@ class Instructor:
         return test_acc, f1
 
     def _test(self):
-        # path = 'D:\\file of he\model\IK-GCN\\train_file\state_dict\ikgcn_twitter_acc_0.7843_f1_0.7747'
-        # path = 'D:\\file of he\model\IK-GCN\\state_dict\ikgcn_mams_acc_0.8585_f1_0.8550'
-        # path = 'D:\\file of he\model\IK-GCN\\state_dict\ikgcn_laptop_acc_0.8275_f1_0.7961'
-        path = 'D:\codehe\clpt-GCN\state_dict\clpt_laptop_acc_0.8117_f1_0.7779_temp_4'
+
         state_dict = torch.load(path)
         self.model.load_state_dict(state_dict)
-        # self.model = self.best_model
+        self.model = self.best_model
         self.model.eval()
         test_report, test_confusion, acc, f1 = self._evaluate(show_results=True)
         logger.info('accuracy:')
@@ -315,20 +289,16 @@ class Instructor:
         max_f1_overall = 0
         max_test_acc_overall = 0
         self._reset_params()
-        # noise_lambda = 0.1
-        # for name, para in self.model.named_parameters():
-        #     self.model.state_dict()[name][:] += (torch.rand(para.size())-0.5).cuda() * noise_lambda * torch.std(para)
         contrastiveLoss_sentiment = CL_sentiment()
         max_test_acc, max_f1, model_path = self._train(criterion, optimizer, max_test_acc_overall, contrastiveLoss_sentiment)
         logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
         max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
         max_f1_overall = max(max_f1, max_f1_overall)
-        if max_test_acc_overall > self.opt.save_acc:
-            torch.save(self.best_model.state_dict(), model_path)
+        torch.save(self.best_model.state_dict(), model_path)
         logger.info('#' * 60)
         logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
         logger.info('max_f1_overall:{}'.format(max_f1_overall))
-        # self._test()
+        self._test()
 
 
 
@@ -341,21 +311,7 @@ def main():
         'clpt': CLPTGCN,
     }
 
-    train_step_acc = {
 
-        'laptop': 0.80,
-        'restaurant': 0.86,
-        'twitter': 0.76,
-        'mams':0.84
-    }
-
-    save_acc = {
-
-        'laptop': 0.7,
-        'restaurant': 0.875,
-        'twitter': 0.77,
-        'mams':0.855
-    }
 
     dataset_files = {
         'restaurant': {
@@ -443,9 +399,7 @@ def main():
     parser.add_argument('--l6', default=0.0, type=float)
     opt = parser.parse_args()
 
-    # loss = criterion(logits, targets) + loss_cl * self.opt.l1 + criterion(logits_pos, targets) * self.opt.l2 + \
-    #        loss_dl * self.opt.l6 + loss_kl * self.opt.l3 + criterion(scores,
-    #                                                                  label_id) * self.opt.l4 + loss_scl * self.opt.l5
+                                                        
 
     opt.model_class = model_classes[opt.model_name]
     opt.dataset_file = dataset_files[opt.dataset]
@@ -454,8 +408,6 @@ def main():
     opt.initializer = initializers[opt.initializer]
     opt.optimizer = optimizers[opt.optimizer]
     opt.schedule = [5, 10, 15, 20]
-    opt.train_acc = train_step_acc[opt.dataset]
-    opt.save_acc = save_acc[opt.dataset]
     print("choice cuda:{}".format(opt.cuda))
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if opt.device is None else torch.device(opt.device)

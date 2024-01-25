@@ -218,7 +218,7 @@ class Instructor:
                         if test_acc > max_test_acc_overall:
                             if not os.path.exists('state_dict'):
                                 os.mkdir('state_dict')
-                            model_path = 'state_dict/{}_{}_acc_{:.4f}_f1_{:.4f}_temp_4'.format(self.opt.model_name, self.opt.dataset, test_acc, f1)
+                            model_path = 'state_dict/{}_{}_acc_{:.4f}_f1_{:.4f}'.format(self.opt.model_name, self.opt.dataset, test_acc, f1)
                             self.best_model = copy.deepcopy(self.model)
                             logger.info('>> saved: {}'.format(model_path))
                     if f1 > max_f1:
@@ -252,8 +252,6 @@ class Instructor:
                 #                               dim=0) if input_ids_all is not None else inputs[0]
         pooled_out_all = pooled_out_all.cpu().numpy()
         targets_all_np = targets_all.cpu().numpy()
-        np.save('C:/Users/1234/Desktop/tsne/pcl_test_2_pos.npy', pooled_out_all)
-        np.save('C:/Users/1234/Desktop/tsne/pcl_test_label_2_pos.npy', targets_all_np)
         test_acc = n_test_correct / n_test_total
         f1 = metrics.f1_score(targets_all.cpu(), torch.argmax(outputs_all, -1).cpu(), labels=[0, 1, 2], average='macro')
 
